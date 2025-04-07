@@ -1,0 +1,10 @@
+node_modules/
+Dockerfile
+docker-compose.yml
+.env
+package-lock.json
+package.json
+.dockerignore
+public/css/input.css
+src/read_pdf.html
+src/login.php
