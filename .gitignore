@@ -6,5 +6,5 @@ package-lock.json
 package.json
 .dockerignore
 public/css/input.css
-src/read_pdf.html
 src/login.php
+.vscode/

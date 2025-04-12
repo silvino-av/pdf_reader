@@ -30,12 +30,11 @@ dropArea.addEventListener("drop", (event) => {
   handleFiles(event.dataTransfer.files);
 });
 
+// Manejar los archivos seleccionados
 async function handleFiles(files) {
-  // console.log(`Archivos seleccionados: ${files?.length}`)
   selectedFiles = [];
 
-
-  // for (let i = 0; i < 10; i++) {
+  // for (let i = 0; i < 20; i++) {
   for (const file of files) {
     if (file.type !== "application/pdf") {
       alert("Solo se permiten archivos PDF");
@@ -75,7 +74,6 @@ function mostrarArchivos() {
 }
 
 function removeFile(id) {
-  // console.log(`Archivo eliminado: ${id}`);
   const fileElement = document.getElementById(id);
   const index = selectedFiles.findIndex(file => file.name === fileElement.innerText.trim());
   if (index !== -1) {
@@ -93,17 +91,31 @@ btnRename.addEventListener("click", async () => {
   for (let i = 0; i < selectedFiles.length; i++) {
     const file = selectedFiles[i];
     try {
+      let nameFile = null;
       const arrayBuffer = await file.arrayBuffer();
       const loadingTask = pdfReader.getDocument({ data: arrayBuffer });
       const pdfDocument = await loadingTask.promise;
       const page = await pdfDocument.getPage(1);
       const textContent = await page.getTextContent();
       const textItems = textContent.items;
-      const indexIni = textItems.findIndex(item => item.str.includes('Cuenta Abono'));
-      const indexFin = textItems.findIndex(item => item.str.includes('Importe'));
+      const indexTipoOperacion = textItems.findIndex(item => item.str.includes('Operación:'));
 
-      const text = textItems.slice(indexIni + 1, indexFin).map(item => item.str).join(' ');
-      const nameFile = text.split('-')[1]?.trim() || null;
+      if (!indexTipoOperacion) {
+        throw new Error('El formato del PDF no es el esperado');
+      }
+
+      const tipoOperacion = textItems[indexTipoOperacion + 1].str;
+
+      if (tipoOperacion.includes('TARJETA')) {
+        const indexUsuario = textItems.findIndex(item => item.str.includes("Usuario"))
+        nameFile = textItems[indexUsuario + 1].str.split('-')[1]?.trim() || null;
+      } else {
+        const indexIni = textItems.findIndex(item => item.str.includes('Cuenta Abono'));
+        const indexFin = textItems.findIndex(item => item.str.includes('Importe'));
+
+        const text = textItems.slice(indexIni + 1, indexFin).map(item => item.str).join(' ');
+        nameFile = text.split('-')[1]?.trim() || null;
+      }
 
       if (nameFile) {
         const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
@@ -114,9 +126,9 @@ btnRename.addEventListener("click", async () => {
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 min-w-6">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
               </svg>
-              ${nameFile}.pdf
+              ${nameFile} - ${new Date().getTime()}.pdf
             </p>
-            <a href="${url}" class="cursor-pointer text-primary" download="${nameFile}.pdf">
+            <a href="${url}" class="cursor-pointer text-primary" download="${nameFile} - ${new Date().getTime()}.pdf">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
               </svg>
@@ -153,15 +165,38 @@ btnRename.addEventListener("click", async () => {
   progressModal.classList.add("hidden");
 });
 
-function downloadAll() {
+async function downloadAll() {
+  const zip = new JSZip();
   const links = resultArea.querySelectorAll('a');
-  links.forEach(link => {
-    link.click();
+
+  const fileArray = Array.from(links).map(link => {
+    const fileName = link.getAttribute('download');
+    const url = link.href;
+    return fetch(url)
+      .then(response => response.blob())
+      .then(blob => {
+        zip.file(fileName, blob);
+      });
   });
+
+  await Promise.all(fileArray);
+
+  try {
+    const content = await zip.generateAsync({ type: "blob" });
+    const zipUrl = URL.createObjectURL(content);
+    const a = document.createElement("a");
+    a.href = zipUrl;
+    a.download = "archivos.zip";
+    a.click();
+    URL.revokeObjectURL(zipUrl);
+    alert('Descarga completa!!');
+  } catch (error) {
+    console.error("Error al crear el zip:", error);
+    alert('Ocurrio algo inesperado en la descarga');
+  }
 }
 
 btnClear.addEventListener("click", () => {
-  // console.log('Limpiando archivos seleccionados');
   dropArea.classList.add("justify-center");
   dropArea.innerHTML = `<h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Sube tus archivos PDF</h2>
       <p class="text-gray-800 dark:text-gray-400">Puedes arrastrar y soltar tus archivos aquí o hacer clic para seleccionarlos.</p>`;

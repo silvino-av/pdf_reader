@@ -1,22 +1,28 @@
 // toogle dark theme
-const html = document.documentElement;
+const imgLogo = document.getElementById('img-logo');
+const htmldocument = document.documentElement;
 
 function setTheme(mode) {
+
   const modes = {
     light: () => {
-      html.classList.remove('dark');
+      htmldocument.classList.remove('dark');
       localStorage.setItem('theme', 'light');
+      imgLogo && (imgLogo.src = '/assets/logo-black.png');
     },
     dark: () => {
-      html.classList.add('dark');
+      htmldocument.classList.add('dark');
       localStorage.setItem('theme', 'dark');
+      imgLogo && (imgLogo.src = '/assets/logo-white.png');
     },
     system: () => {
       localStorage.setItem('theme', 'system');
       if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        html.classList.add('dark');
+        htmldocument.classList.add('dark');
+        imgLogo && (imgLogo.src = '/assets/logo-white.png');
       } else {
-        html.classList.remove('dark');
+        htmldocument.classList.remove('dark');
+        imgLogo && (imgLogo.src = '/assets/logo-black.png');
       }
     }
   }
@@ -49,4 +55,22 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e =
   if (localStorage.getItem('theme') === 'system') {
     setTheme('system');
   }
+});
+
+document.getElementById('logout-button')?.addEventListener('click', function() {
+  fetch('/api/logout', {
+      method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        window.location.href = '/login'; // Redirigir al login
+      } else {
+        alert(data.message);
+      }
+    })
+    .catch(err => {
+      console.error('Error al cerrar sesión:', err);
+      alert('Error al cerrar sesión. Por favor, intenta de nuevo.');
+    });
 });
